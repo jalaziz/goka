@@ -14,6 +14,10 @@ func (c *client) waitStartup() {
 	c.consumer.waitRequiredConsumersStartup()
 }
 
+func (c *client) isRunning() bool {
+	return c.consumerGroup.state.IsState(cgStateConsuming)
+}
+
 func (c *client) requireConsumer(topic string) {
 	c.consumer.requirePartConsumer(topic)
 }

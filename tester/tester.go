@@ -366,6 +366,10 @@ func (tt *Tester) waitForClients() {
 	for {
 		var totalCatchup int
 		for _, client := range tt.clients {
+			if !client.isRunning() {
+				// Skip stopped clients
+				continue
+			}
 			totalCatchup += client.catchup()
 		}
 

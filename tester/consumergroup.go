@@ -8,6 +8,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/lovoo/goka"
 	"github.com/lovoo/goka/multierr"
 )
@@ -30,16 +31,17 @@ type consumerGroup struct {
 }
 
 const (
-	cgStateStopped goka.State = iota
+	cgStateIdle goka.State = iota
 	cgStateSetup
 	cgStateConsuming
 	cgStateCleaning
+	cgStateStopped
 )
 
 func newConsumerGroup(t T, tt *Tester) *consumerGroup {
 	return &consumerGroup{
 		errs:  make(chan error, 10),
-		state: goka.NewSignal(cgStateStopped, cgStateSetup, cgStateConsuming, cgStateCleaning).SetState(cgStateStopped),
+		state: goka.NewSignal(cgStateIdle, cgStateSetup, cgStateConsuming, cgStateCleaning, cgStateStopped).SetState(cgStateIdle),
 		tt:    tt,
 	}
 }
@@ -55,7 +57,7 @@ func (cg *consumerGroup) catchupAndWait() int {
 
 // Consume starts consuming from the consumergroup
 func (cg *consumerGroup) Consume(ctx context.Context, topics []string, handler sarama.ConsumerGroupHandler) error {
-	if !cg.state.IsState(cgStateStopped) {
+	if !cg.state.IsState(cgStateIdle) {
 		return fmt.Errorf("Tried to double-consume this consumer-group, which is not supported by the mock")
 	}
 	logger.Printf("consuming consumergroup with topics %v", topics)
@@ -129,7 +131,7 @@ func (cg *consumerGroup) Errors() <-chan error {
 }
 
 func (cg *consumerGroup) waitRunning() {
-	<-cg.state.WaitForState(cgStateConsuming)
+	<-cg.state.WaitForStateMin(cgStateConsuming)
 }
 
 func (cg *consumerGroup) nextOffset() int64 {
